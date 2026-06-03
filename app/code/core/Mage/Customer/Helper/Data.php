@@ -508,8 +508,12 @@ class Mage_Customer_Helper_Data extends Mage_Core_Helper_Abstract
      */
     public function getNamePrefixOptions($store = null)
     {
-        return $this->_prepareNamePrefixSuffixOptions(
-            Mage::helper('customer/address')->getConfig('prefix_options', $store),
+        return $this->_addOptionalEmptyOption(
+            $this->_prepareNamePrefixSuffixOptions(
+                Mage::helper('customer/address')->getConfig('prefix_options', $store),
+            ),
+            'prefix_show',
+            $store,
         );
     }
 
@@ -521,8 +525,12 @@ class Mage_Customer_Helper_Data extends Mage_Core_Helper_Abstract
      */
     public function getNameSuffixOptions($store = null)
     {
-        return $this->_prepareNamePrefixSuffixOptions(
-            Mage::helper('customer/address')->getConfig('suffix_options', $store),
+        return $this->_addOptionalEmptyOption(
+            $this->_prepareNamePrefixSuffixOptions(
+                Mage::helper('customer/address')->getConfig('suffix_options', $store),
+            ),
+            'suffix_show',
+            $store,
         );
     }
 
@@ -545,6 +553,32 @@ class Mage_Customer_Helper_Data extends Mage_Core_Helper_Abstract
             $result[$value] = $value;
         }
         return $result;
+    }
+
+    /**
+     * Prepend an empty option when the prefix/suffix field is optional.
+     *
+     * Without it, a select built from the configured options has no entry
+     * matching an empty value, so the browser auto-selects the first option
+     * (e.g. "Mr.") and a save silently writes it. The frontend name widget
+     * works around this in the block; doing it here fixes the admin address
+     * forms too and keeps both areas consistent. Required fields are left
+     * unchanged so validate-select still rejects an empty submission.
+     *
+     * @param array|bool $options
+     * @param string $showConfigKey 'prefix_show' or 'suffix_show'
+     * @param Mage_Core_Model_Store|int|string|null $store
+     * @return array|bool
+     */
+    protected function _addOptionalEmptyOption($options, $showConfigKey, $store = null)
+    {
+        if (!is_array($options) || empty($options) || array_key_exists('', $options)) {
+            return $options;
+        }
+        if (Mage::helper('customer/address')->getConfig($showConfigKey, $store) === 'req') {
+            return $options;
+        }
+        return ['' => ''] + $options;
     }
 
     /**
