@@ -45,25 +45,18 @@ class Mage_Adminhtml_Block_Template extends Mage_Core_Block_Template
     /**
      * Deleting script tags from string
      *
-     * Masks {{...}} template directives before filtering and restores them afterwards, so the
-     * malicious-code filter (HTMLPurifier) cannot mangle directives whose nested quotes (e.g.
-     * {{media url="..."}} inside an attribute) are invalid HTML. Previews resolve the directives
-     * afterwards via getProcessedTemplate().
+     * Preview blocks must run this over the *resolved* template (after
+     * getProcessedTemplate() has expanded {{...}} directives into real URLs and
+     * values), never over the raw directive syntax: {{media url="..."}} inside an
+     * attribute is invalid HTML that HTMLPurifier would mangle, and masking the
+     * directives out of the filter would let arbitrary markup inside braces bypass
+     * sanitization entirely.
      *
      * @param string $html
      * @return string
      */
     public function maliciousCodeFilter($html)
     {
-        $directives = [];
-        $masked = (string) preg_replace_callback('/\{\{.*?\}\}/s', function (array $match) use (&$directives): string {
-            $token = 'mahodirective' . count($directives);
-            $directives[$token] = $match[0];
-            return $token;
-        }, (string) $html);
-
-        $filtered = Mage::getSingleton('core/input_filter_maliciousCode')->filter($masked);
-
-        return $directives === [] ? $filtered : strtr($filtered, $directives);
+        return Mage::getSingleton('core/input_filter_maliciousCode')->filter($html);
     }
 }
