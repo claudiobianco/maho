@@ -123,6 +123,13 @@ class Maho_Blog_Model_Post extends Mage_Core_Model_Abstract
         /** @var Mage_Cms_Helper_Data $helper */
         $helper = Mage::helper('cms');
 
-        return $helper->getPageTemplateProcessor()->filter($content);
+        // Resolve template directives first, then sanitize the resolved HTML. Sanitizing the raw
+        // content (on save or here) would mangle {{media url="..."}} directives, whose nested
+        // quotes are invalid HTML; masking them out of the filter would let arbitrary markup
+        // inside braces bypass sanitization entirely.
+        $content = $helper->getPageTemplateProcessor()->filter($content);
+
+        $maliciousCodeFilter = Mage::getModel('core/input_filter_maliciousCode');
+        return $maliciousCodeFilter->linkFilter($maliciousCodeFilter->filter($content));
     }
 }
